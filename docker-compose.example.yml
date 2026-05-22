@@ -1,0 +1,12 @@
+services:
+  dockwatch-telegram-relay:
+    image: dockwatch-telegram-relay:1.0.0
+    container_name: dockwatch-telegram-relay
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: "YOUR_TELEGRAM_BOT_TOKEN"
+      TELEGRAM_CHAT_ID: "-100xxxxxxxxxx"
+      TELEGRAM_THREAD_ID: "10"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "18080:8080"
