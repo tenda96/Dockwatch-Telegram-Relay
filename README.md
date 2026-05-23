@@ -2,7 +2,7 @@
 
 A small Docker relay that receives **Mattermost webhook notifications from Dockwatch** and forwards them to a **Telegram group or Telegram forum topic**.
 
-This is useful when Dockwatch does not support Telegram `message_thread_id` directly.
+It is useful when Dockwatch does not support Telegram `message_thread_id` directly.
 
 ## How it works
 
@@ -23,8 +23,58 @@ Dockwatch sends notifications there, and the relay forwards them to Telegram usi
 - Works with Dockwatch Mattermost notifications
 - Sends messages to Telegram groups
 - Supports Telegram forum topics with `TELEGRAM_THREAD_ID`
+- Improves Dockwatch notification formatting for Telegram
+- Converts Mattermost-style tables into readable Telegram bullet lists
+- Formats container updates as `container: old → new`
+- Formats state changes as `container: previous → current`
+- Removes Mattermost table headers from Telegram messages
+- Skips empty Dockwatch notifications automatically
 - Runs as a small Docker container
 - No external services required
+
+## Example notification
+
+Instead of this Mattermost-style table:
+
+```text
+##### Dockwatch: Updates
+Server: My Server
+
+| Type | Container |
+| ----- | ----- |
+| Available | sonarr, radarr |
+| Updated | prowlarr [1.30.2 → 1.31.0], lidarr [2.8.0 -> 2.9.0] |
+```
+
+Telegram receives a cleaner message:
+
+```text
+🔄 Dockwatch — Updates
+Server: My Server
+
+📦 Available:
+• sonarr
+• radarr
+
+
+⬆️ Updated:
+• prowlarr: 1.30.2 → 1.31.0
+• lidarr: 2.8.0 → 2.9.0
+```
+
+State change notifications are also cleaned up:
+
+```text
+📦 Dockwatch — Container state change
+Server: My Server
+
+✅ Added:
+• filebrowser
+• hyperhdr
+
+🔁 Changed:
+• radarr: exited → running
+```
 
 ## Environment variables
 
@@ -42,7 +92,7 @@ Create a `docker-compose.yml` like this:
 ```yaml
 services:
   dockwatch-telegram-relay:
-    image: dockwatch-telegram-relay:1.0.0
+    image: dockwatch-telegram-relay:1.1.0
     container_name: dockwatch-telegram-relay
     restart: unless-stopped
     environment:
@@ -75,7 +125,7 @@ Username: Dockwatch
 Example:
 
 ```text
-Webhook URL: http://YOUR_SERVER_IP:18080/hooks/dockwatch
+Webhook URL: http://192.168.1.xx:18080/hooks/dockwatch
 ```
 
 Then send a test notification from Dockwatch.
@@ -90,6 +140,14 @@ curl -X POST http://localhost:18080/hooks/dockwatch \
   -d '{"text":"Test Dockwatch Telegram Relay","username":"Dockwatch"}'
 ```
 
+You can also test the formatted update notification:
+
+```bash
+curl -X POST http://localhost:18080/hooks/dockwatch \
+  -H "Content-Type: application/json" \
+  -d '{"text":"##### Dockwatch: Updates\nServer: _Example Server_\n\n| Type | Container |\n| ----- | ----- |\n| Available | sonarr, radarr |\n| Updated | prowlarr [1.30.2 → 1.31.0], lidarr [2.8.0 -> 2.9.0] |","username":"Dockwatch"}'
+```
+
 If everything is working, the message should appear in Telegram.
 
 ## Use the prebuilt image from GitHub Releases
@@ -97,13 +155,13 @@ If everything is working, the message should appear in Telegram.
 Download the image archive from the release page, then load it:
 
 ```bash
-gunzip -c dockwatch-telegram-relay-v1.0.0-amd64.tar.gz | docker load
+gunzip -c dockwatch-telegram-relay-v1.1.0-amd64.tar.gz | docker load
 ```
 
 Then use this image in Docker Compose:
 
 ```yaml
-image: dockwatch-telegram-relay:1.0.0
+image: dockwatch-telegram-relay:1.1.0
 ```
 
 ## Build manually
@@ -111,13 +169,13 @@ image: dockwatch-telegram-relay:1.0.0
 You can also build the image yourself:
 
 ```bash
-docker build -t dockwatch-telegram-relay:1.0.0 .
+docker build -t dockwatch-telegram-relay:1.1.0 .
 ```
 
 Then run it with Docker Compose using:
 
 ```yaml
-image: dockwatch-telegram-relay:1.0.0
+image: dockwatch-telegram-relay:1.1.0
 ```
 
 ## Telegram notes
@@ -165,6 +223,12 @@ Use this URL format:
 ```text
 http://YOUR_SERVER_IP:18080/hooks/dockwatch
 ```
+
+### Dockwatch sends empty notifications
+
+The relay skips empty messages automatically.
+
+This can happen when Dockwatch calls the Mattermost webhook but generates an empty `text` field.
 
 ## License
 
